@@ -134,3 +134,24 @@ test!(
     "-r",
     "2"
 );
+
+test!(
+    top_2_json,
+    "top",
+    "./fixtures/wee_alloc.wasm",
+    "-n",
+    "2",
+    "-f",
+    "json"
+);
+
+test!(
+    top_2_json_retained,
+    "top",
+    "./fixtures/wee_alloc.wasm",
+    "--retained",
+    "-n",
+    "2",
+    "-f",
+    "json"
+);

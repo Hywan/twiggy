@@ -16,9 +16,18 @@ version = "0.1.0"
 path = "../analyze"
 
 [dependencies.svelte-opt]
+default-features = false
+features = ["wasm"]
 version = "0.1.0"
 path = "../opt"
+
+[dependencies.svelte-parser]
+version = "0.1.0"
+path = "../parser"
 
 [dependencies.svelte-traits]
 version = "0.1.0"
 path = "../traits"
+
+[dependencies.wasm-bindgen]
+version = "0.1.0"

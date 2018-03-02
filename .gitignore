@@ -1,4 +1,7 @@
 
 /target
 **/*.rs.bk
-Cargo.lock
+svelte_wasm_api.d.ts
+svelte_wasm_api.js
+svelte_wasm_api.wasm
+svelte_wasm_api_bg.wasm

@@ -7,6 +7,8 @@ extern crate svelte_ir as ir;
 extern crate svelte_opt as opt;
 extern crate svelte_traits as traits;
 
+mod json;
+
 use std::cmp;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -150,6 +152,31 @@ impl traits::Emit for Top {
         write!(dest, "{}", &table)?;
         Ok(())
     }
+
+    fn emit_json(&self, items: &ir::Items, dest: &mut io::Write) -> Result<(), traits::Error> {
+        let mut arr = json::array(dest)?;
+
+        for &id in &self.items {
+            let item = &items[id];
+
+            let mut obj = arr.object()?;
+            obj.field("name", item.name())?;
+
+            let size = item.size();
+            let size_percent = (size as f64) / (items.size() as f64) * 100.0;
+            obj.field("shallow_size", size)?;
+            obj.field("shallow_size_percent", size_percent)?;
+
+            if self.opts.retained {
+                let size = items.retained_size(id);
+                let size_percent = (size as f64) / (items.size() as f64) * 100.0;
+                obj.field("retained_size", size)?;
+                obj.field("retained_size_percent", size_percent)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Run the `top` analysis on the given IR items.
@@ -282,6 +309,50 @@ impl traits::Emit for DominatorTree {
         write!(dest, "{}", &table)?;
         Ok(())
     }
+
+    fn emit_json(&self, items: &ir::Items, dest: &mut io::Write) -> Result<(), traits::Error> {
+        fn recursive_add_children(
+            items: &ir::Items,
+            opts: &opt::Dominators,
+            dominator_tree: &BTreeMap<ir::Id, Vec<ir::Id>>,
+            id: ir::Id,
+            obj: &mut json::Object,
+        ) -> Result<(), traits::Error> {
+            let item = &items[id];
+
+            obj.field("name", item.name())?;
+
+            let size = item.size();
+            let size_percent = (size as f64) / (items.size() as f64) * 100.0;
+            obj.field("shallow_size", size)?;
+            obj.field("shallow_size_percent", size_percent)?;
+
+            let size = items.retained_size(id);
+            let size_percent = (size as f64) / (items.size() as f64) * 100.0;
+            obj.field("retained_size", size)?;
+            obj.field("retained_size_percent", size_percent)?;
+
+            // TODO FITZGEN: this needs to do the filtering like how text
+            // formatting does, but it would be ncie to push that earlier, like
+            // `top` does.
+
+            if let Some(children) = dominator_tree.get(&id) {
+                let mut children: Vec<_> = children.iter().cloned().collect();
+                children.sort_by(|a, b| items.retained_size(*b).cmp(&items.retained_size(*a)));
+
+                let mut arr = obj.array("children")?;
+                for child in children {
+                    let mut obj = arr.object()?;
+                    recursive_add_children(items, opts, dominator_tree, child, &mut obj)?;
+                }
+            }
+
+            Ok(())
+        }
+
+        let mut obj = json::object(dest)?;
+        recursive_add_children(items, &self.opts, &self.tree, items.meta_root(), &mut obj)
+    }
 }
 
 /// Compute the dominator tree for the given IR graph.
@@ -376,6 +447,10 @@ impl traits::Emit for Paths {
 
         write!(dest, "{}", table)?;
         Ok(())
+    }
+
+    fn emit_json(&self, _items: &ir::Items, _dest: &mut io::Write) -> Result<(), traits::Error> {
+        unimplemented!()
     }
 }
 
